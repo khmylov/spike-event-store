@@ -1,0 +1,11 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# Rider ignored files
+/contentModel.xml
+/modules.xml
+/.idea.EventStore.iml
+/projectSettingsUpdater.xml
+# Datasource local storage ignored files
+/../../../../../../../:\sources\spike-event-storage\EventStore\.idea\.idea.EventStore\.idea/dataSources/
+/dataSources.local.xml
