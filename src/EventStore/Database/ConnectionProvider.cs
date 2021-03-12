@@ -27,14 +27,5 @@ namespace EventStore.Database
             var result = await action(connection).ConfigureAwait(false);
             return result;
         }
-
-        public Task<TResult> WithMasterConnectionAsync<TResult>(
-            Func<SqlConnection, Task<TResult>> action,
-            CancellationToken cancellationToken)
-        {
-            var masterBuilder = new SqlConnectionStringBuilder(_connectionStringBuilder.ConnectionString);
-            masterBuilder.InitialCatalog = "master";
-            return new ConnectionProvider(masterBuilder).WithConnectionAsync(action, cancellationToken);
-        }
     }
 }

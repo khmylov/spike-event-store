@@ -53,7 +53,7 @@ namespace EventStore
 
             using (var host = CreateWebHost())
             {
-                Metrics.Instance = host.Services.GetRequiredService<IMetrics>().Measure;
+                Metrics.Instance = host.Services.GetRequiredService<IMetrics>();
 
                 // Dependencies
                 var connectionStringBuilder = new SqlConnectionStringBuilder(
@@ -110,8 +110,9 @@ namespace EventStore
                 Consumers: Enumerable
                     .Range(1, 1)
                     .Select(_ => new ConsumerConfig(
-                        PollingInterval: TimeSpan.FromSeconds(3000),
-                        PickNextInterval: TimeSpan.Zero))
+                        PollingInterval: TimeSpan.FromMilliseconds(3000),
+                        PickNextInterval: TimeSpan.Zero,
+                        HandlerDuration: TimeSpan.FromMilliseconds(1000)))
                     .ToList());
 
             // Secondary app which produces only

@@ -24,10 +24,13 @@ namespace EventStore.Workflow
 
         public Consumer(DbStore store, Guid applicationId, ConsumerConfig config)
         {
+            _log.Information("Created new consumer {consumerId}", _id);
             _store = store;
             _applicationId = applicationId;
             _config = config;
         }
+
+        public event Action<InputEvent>? EventConsumed;
 
         public void StartConsuming(CancellationToken cancellationToken)
         {
@@ -45,14 +48,16 @@ namespace EventStore.Workflow
                     var consumed = false;
                     try
                     {
-                        consumed = await ConsumeOneAsync(cancellationToken);
+                        consumed = await ConsumeOneAsync(cancellationToken).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
                         _log.Error(ex, "Error while consuming");
                     }
 
-                    await Task.Delay(consumed ? _config.PickNextInterval : _config.PollingInterval, cancellationToken);
+                    await Task
+                        .Delay(consumed ? _config.PickNextInterval : _config.PollingInterval, cancellationToken)
+                        .ConfigureAwait(false);
                 }
             }
 
@@ -64,29 +69,31 @@ namespace EventStore.Workflow
             return _store.ConsumeOneAsync(Handle, cancellationToken);
         }
 
-        private Task Handle(InputEvent @event)
+        private async Task Handle(InputEvent @event)
         {
             var lastConsumed = _lastConsumedDatabaseId;
             var databaseId = @event.DatabaseId;
             if (databaseId <= lastConsumed)
             {
                 _log.Error("Last consumed ID {lastConsumed} > current ID {current}", lastConsumed, databaseId);
-                Metrics.Instance.Counter.Increment(new CounterOptions {Name = "invalid_consume_order_count"});
+                Metrics.Measure.Counter.Increment(new CounterOptions {Name = "invalid_consume_order_count"});
             }
 
             _lastConsumedDatabaseId = databaseId;
 
             var sameApp = @event.ApplicationId == _applicationId;
 
-            Metrics.Instance.Histogram.Update(
+            Metrics.Measure.Histogram.Update(
                 new HistogramOptions {Name = "create_consume_latency", Tags = new MetricTags("same_app", sameApp.ToString())},
                 (long) (DateTimeOffset.Now - @event.CreatedAt).TotalMilliseconds);
-            Metrics.Instance.Histogram.Update(
+            Metrics.Measure.Histogram.Update(
                 new HistogramOptions {Name = "insert_consume_latency", Tags = new MetricTags("same_app", sameApp.ToString())},
                 (long) (DateTimeOffset.Now - @event.InsertedAt).TotalMilliseconds);
 
-            Metrics.Instance.Counter.Increment(new CounterOptions {Name = "handled_input_event_count"});
-            return Task.CompletedTask;
+            await Task.Delay(_config.HandlerDuration).ConfigureAwait(false);
+
+            Metrics.Measure.Counter.Increment(new CounterOptions {Name = "handled_input_event_count"});
+            EventConsumed?.Invoke(@event);
         }
 
         public void Dispose()

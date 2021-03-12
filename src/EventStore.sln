@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventStore", "EventStore\EventStore.csproj", "{3116BB91-0A13-48A5-9F88-80FE4D8E370B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventStore.Tests", "EventStore.Tests\EventStore.Tests.csproj", "{971C6209-F718-4D68-A2E3-08A2CEA568BF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{3116BB91-0A13-48A5-9F88-80FE4D8E370B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3116BB91-0A13-48A5-9F88-80FE4D8E370B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3116BB91-0A13-48A5-9F88-80FE4D8E370B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{971C6209-F718-4D68-A2E3-08A2CEA568BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{971C6209-F718-4D68-A2E3-08A2CEA568BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{971C6209-F718-4D68-A2E3-08A2CEA568BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{971C6209-F718-4D68-A2E3-08A2CEA568BF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

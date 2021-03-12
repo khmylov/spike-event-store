@@ -9,7 +9,8 @@ namespace EventStore.Workflow
 
     internal sealed record ConsumerConfig(
         TimeSpan PollingInterval,
-        TimeSpan PickNextInterval);
+        TimeSpan PickNextInterval,
+        TimeSpan HandlerDuration);
 
     internal sealed record ApplicationConfig(
         IReadOnlyList<ProducerConfig> Producers,

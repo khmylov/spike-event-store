@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Serilog;
@@ -9,7 +10,6 @@ namespace EventStore.Workflow
     {
         private static readonly ILogger _log = Log.ForContext<Application>();
 
-        private readonly DbStore _store;
         private readonly ApplicationConfig _config;
         private readonly int _id = InstanceCounter.GetNextId("Application");
         private readonly Guid _applicationGuid = Guid.NewGuid();
@@ -17,9 +17,26 @@ namespace EventStore.Workflow
 
         public Application(DbStore store, ApplicationConfig config)
         {
-            _store = store;
             _config = config;
+
+            Consumers = config.Consumers.Select(cfg => new Consumer(store, _applicationGuid, cfg)).ToList();
+            Producers = config.Producers.Select(cfg =>
+            {
+                var producer = new Producer(store, _applicationGuid, cfg);
+                producer.EventProduced += ev =>
+                {
+                    foreach (var consumer in Consumers)
+                    {
+                        consumer.NotifyEventProduced(ev);
+                    }
+                };
+                return producer;
+            }).ToList();
         }
+
+        public IReadOnlyList<Consumer> Consumers { get; }
+
+        public IReadOnlyList<Producer> Producers { get; }
 
         public void Start(CancellationToken cancellationToken)
         {
@@ -32,21 +49,7 @@ namespace EventStore.Workflow
                 "Application {id} starting with {producerCount} producer(s) and {consumerCount} consumer(s)...",
                 _id, _config.Producers.Count, _config.Consumers.Count);
 
-            var consumers = _config.Consumers.Select(cfg => new Consumer(_store, _applicationGuid, cfg)).ToList();
-            var producers = _config.Producers.Select(cfg =>
-            {
-                var producer = new Producer(_store, _applicationGuid, cfg);
-                producer.EventProduced += ev =>
-                {
-                    foreach (var consumer in consumers)
-                    {
-                        consumer.NotifyEventProduced(ev);
-                    }
-                };
-                return producer;
-            }).ToList();
-
-            foreach (var consumer in consumers)
+            foreach (var consumer in Consumers)
             {
                 _lifecycle.AddChild(() =>
                 {
@@ -55,7 +58,7 @@ namespace EventStore.Workflow
                 }, cancellationToken);
             }
 
-            foreach (var producer in producers)
+            foreach (var producer in Producers)
             {
                 _lifecycle.AddChild(() =>
                 {

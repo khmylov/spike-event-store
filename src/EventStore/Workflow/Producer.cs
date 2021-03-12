@@ -39,7 +39,7 @@ namespace EventStore.Workflow
                 "Publisher {publisherId} created new event {eventId} with payload {value}, going to publish...",
                 _id, input.EventId, input.Payload.Number);
             var stored = await _store.Enqueue(input, cancellationToken);
-            Metrics.Instance.Counter.Increment(new CounterOptions {Name = "produced_event_count"});
+            Metrics.Measure.Counter.Increment(new CounterOptions {Name = "produced_event_count"});
             EventProduced?.Invoke(stored);
         }
 
