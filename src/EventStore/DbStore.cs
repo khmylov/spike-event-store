@@ -113,14 +113,14 @@ VALUES (@eventId, @eventType, @createdAt, @payload, @applicationId)
                 var read = await connection
                     .QueryFirstOrDefaultAsync<InputEventReadDto?>(
                         @"
-DELETE FROM [EventStore]
-OUTPUT deleted.*
-WHERE [Id] = (
-    SELECT TOP(1) [Id]
-    FROM [EventStore] WITH (READCOMMITTEDLOCK, READPAST)
-    WHERE [EventType] = 'InputEvent'
+WITH cte AS (
+    SELECT TOP(1) *
+    FROM [EventStore] WITH (ROWLOCK, READCOMMITTEDLOCK, READPAST)
+    WHERE [EventType] = N'InputEvent'
     ORDER BY [Id] ASC
 )
+DELETE FROM cte
+OUTPUT deleted.*
 ",
                         transaction: transaction);
 

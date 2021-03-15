@@ -108,11 +108,11 @@ namespace EventStore
                         Interval: Rand.TimeSpanMs(300, 1000)))
                     .ToList(),
                 Consumers: Enumerable
-                    .Range(1, 1)
+                    .Range(1, 5)
                     .Select(_ => new ConsumerConfig(
                         PollingInterval: TimeSpan.FromMilliseconds(3000),
                         PickNextInterval: TimeSpan.Zero,
-                        HandlerDuration: TimeSpan.FromMilliseconds(1000)))
+                        HandlerDuration: TimeSpan.FromMilliseconds(5000)))
                     .ToList());
 
             // Secondary app which produces only
