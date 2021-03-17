@@ -61,13 +61,26 @@ namespace EventStore.Workflow
 
             if (currentState == expectedCurrent)
             {
-                var _ = new Timer(_ => TransitionTo(expectedCurrent, state), null, delay, Timeout.InfiniteTimeSpan);
+                RunAfterDelay();
             }
             else
             {
                 _log.Warning(
                     "Skipping scheduled state transition to {nextState} because expected current to be {expectedState}, but it's actually {currentState}",
                     state, expectedCurrent, currentState);
+            }
+
+            async void RunAfterDelay()
+            {
+                try
+                {
+                    await Task.Delay(delay).ConfigureAwait(false);
+                    TransitionTo(expectedCurrent, state);
+                }
+                catch (Exception ex)
+                {
+                    _log.Error("Error while executing scheduled transition");
+                }
             }
         }
 
