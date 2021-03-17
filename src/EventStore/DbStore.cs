@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -104,17 +106,20 @@ VALUES (@eventId, @eventType, @createdAt, @payload, @applicationId)
             return retrieved;
         }
 
-        public async Task<bool> ConsumeOneAsync(Func<InputEvent, Task> handle, CancellationToken cancellationToken)
+        public async Task<bool> ConsumeManyAsync(
+            int fetchCount,
+            Func<IReadOnlyList<InputEvent>, Task> handle,
+            CancellationToken cancellationToken)
         {
             _log.Debug("Trying to consume next task...");
             return await _connectionProvider.WithConnectionAsync(async connection =>
             {
                 await using var transaction = connection.BeginTransaction(IsolationLevel.ReadCommitted);
-                var read = await connection
-                    .QueryFirstOrDefaultAsync<InputEventReadDto?>(
-                        @"
+                var read = (await connection
+                        .QueryAsync<InputEventReadDto>(
+                            @"
 WITH cte AS (
-    SELECT TOP(1) *
+    SELECT TOP(@count) *
     FROM [EventStore] WITH (ROWLOCK, READCOMMITTEDLOCK, READPAST)
     WHERE [EventType] = N'InputEvent'
     ORDER BY [Id] ASC
@@ -122,19 +127,21 @@ WITH cte AS (
 DELETE FROM cte
 OUTPUT deleted.*
 ",
-                        transaction: transaction);
+                            param: new {count = fetchCount},
+                            transaction: transaction))
+                    .ToList();
 
-                if (read is null)
+                if (read.Count == 0)
                 {
                     _log.Information("Nothing to read");
                     return false;
                 }
 
-                var @event = Map(read);
-                _log.Information("Read one entry {data}", @event);
-                await handle(@event);
+                var events = read.Select(Map).ToList();
+                _log.Information("Read {count} entries {data}", @events.Count, events);
+                await handle(@events);
 
-                _log.Information("Finished processing {event}, committing...", @event);
+                _log.Information("Finished processing events, committing...", events);
 
                 await transaction.CommitAsync(cancellationToken);
 

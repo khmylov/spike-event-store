@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using App.Metrics;
@@ -171,7 +172,7 @@ namespace EventStore.Workflow
             {
                 try
                 {
-                    return await ConsumeOneAsync(default).ConfigureAwait(false);
+                    return await ConsumeManyAsync(default).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -194,36 +195,42 @@ namespace EventStore.Workflow
             _stateMachine.Start();
         }
 
-        private Task<bool> ConsumeOneAsync(CancellationToken cancellationToken)
+        private Task<bool> ConsumeManyAsync(CancellationToken cancellationToken)
         {
-            return _store.ConsumeOneAsync(Handle, cancellationToken);
+            return _store.ConsumeManyAsync(_config.BatchFetchSize, Handle, cancellationToken);
         }
 
-        private async Task Handle(InputEvent @event)
+        private async Task Handle(IReadOnlyList<InputEvent> events)
         {
-            var lastConsumed = _lastConsumedDatabaseId;
-            var databaseId = @event.DatabaseId;
-            if (databaseId <= lastConsumed)
+            Metrics.Measure.Histogram.Update(new HistogramOptions {Name = "fetched_batch_size"}, events.Count);
+
+            foreach (var @event in events)
             {
-                _log.Error("Last consumed ID {lastConsumed} > current ID {current}", lastConsumed, databaseId);
-                Metrics.Measure.Counter.Increment(new CounterOptions {Name = "invalid_consume_order_count"});
+                var lastConsumed = _lastConsumedDatabaseId;
+
+                var databaseId = @event.DatabaseId;
+                if (databaseId <= lastConsumed)
+                {
+                    _log.Error("Last consumed ID {lastConsumed} > current ID {current}", lastConsumed, databaseId);
+                    Metrics.Measure.Counter.Increment(new CounterOptions {Name = "invalid_consume_order_count"});
+                }
+
+                _lastConsumedDatabaseId = databaseId;
+
+                var sameApp = @event.ApplicationId == _applicationId;
+
+                Metrics.Measure.Histogram.Update(
+                    new HistogramOptions {Name = "create_consume_latency", Tags = new MetricTags("same_app", sameApp.ToString())},
+                    (long) (DateTimeOffset.Now - @event.CreatedAt).TotalMilliseconds);
+                Metrics.Measure.Histogram.Update(
+                    new HistogramOptions {Name = "insert_consume_latency", Tags = new MetricTags("same_app", sameApp.ToString())},
+                    (long) (DateTimeOffset.Now - @event.InsertedAt).TotalMilliseconds);
+
+                Metrics.Measure.Counter.Increment(new CounterOptions {Name = "handled_input_event_count"});
+                EventConsumed?.Invoke(@event);
             }
 
-            _lastConsumedDatabaseId = databaseId;
-
-            var sameApp = @event.ApplicationId == _applicationId;
-
-            Metrics.Measure.Histogram.Update(
-                new HistogramOptions {Name = "create_consume_latency", Tags = new MetricTags("same_app", sameApp.ToString())},
-                (long) (DateTimeOffset.Now - @event.CreatedAt).TotalMilliseconds);
-            Metrics.Measure.Histogram.Update(
-                new HistogramOptions {Name = "insert_consume_latency", Tags = new MetricTags("same_app", sameApp.ToString())},
-                (long) (DateTimeOffset.Now - @event.InsertedAt).TotalMilliseconds);
-
             await Task.Delay(_config.HandlerDuration).ConfigureAwait(false);
-
-            Metrics.Measure.Counter.Increment(new CounterOptions {Name = "handled_input_event_count"});
-            EventConsumed?.Invoke(@event);
         }
 
         public void Dispose()

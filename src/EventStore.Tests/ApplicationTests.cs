@@ -22,7 +22,7 @@ namespace EventStore.Tests
                 ServiceConfig.Instance.DbStore,
                 new ApplicationConfig(
                     Producers: new[] {new ProducerConfig(TimeSpan.Zero, TimeSpan.FromMilliseconds(1))},
-                    Consumers: new[] {new ConsumerConfig(TimeSpan.FromMilliseconds(1), TimeSpan.Zero, TimeSpan.Zero)})))
+                    Consumers: new[] {new ConsumerConfig(1, TimeSpan.FromMilliseconds(1), TimeSpan.Zero, TimeSpan.Zero)})))
             {
                 foreach (var p in application.Producers)
                 {

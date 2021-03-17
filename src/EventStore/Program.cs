@@ -110,6 +110,7 @@ namespace EventStore
                 Consumers: Enumerable
                     .Range(1, 1)
                     .Select(_ => new ConsumerConfig(
+                        BatchFetchSize: 10,
                         PollingInterval: TimeSpan.FromMilliseconds(3000),
                         PickNextInterval: TimeSpan.Zero,
                         HandlerDuration: TimeSpan.FromMilliseconds(10)))

@@ -8,6 +8,7 @@ namespace EventStore.Workflow
         TimeSpan Interval);
 
     internal sealed record ConsumerConfig(
+        int BatchFetchSize,
         TimeSpan PollingInterval,
         TimeSpan PickNextInterval,
         TimeSpan HandlerDuration);
