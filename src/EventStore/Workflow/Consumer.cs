@@ -40,17 +40,34 @@ namespace EventStore.Workflow
 
         public void TransitionTo(ConsumerState expectedCurrent, ConsumerState state)
         {
-            if (Interlocked.CompareExchange(ref _currentState, state, expectedCurrent) == expectedCurrent)
+            var originalState = Interlocked.CompareExchange(ref _currentState, state, expectedCurrent);
+
+            if (originalState == expectedCurrent)
             {
+                _log.Debug("Entering state {stateType}", state);
                 state.OnEnter(this);
+            }
+            else
+            {
+                _log.Warning(
+                    "Transition to state {nextState} not completed because expected state is {expectedState} but actual original is {originalState}",
+                    state, expectedCurrent, originalState);
             }
         }
 
         public void ScheduleTransitionTo(TimeSpan delay, ConsumerState expectedCurrent, ConsumerState state)
         {
-            if (_currentState == expectedCurrent)
+            var currentState = _currentState;
+
+            if (currentState == expectedCurrent)
             {
                 var _ = new Timer(_ => TransitionTo(expectedCurrent, state), null, delay, Timeout.InfiniteTimeSpan);
+            }
+            else
+            {
+                _log.Warning(
+                    "Skipping scheduled state transition to {nextState} because expected current to be {expectedState}, but it's actually {currentState}",
+                    state, expectedCurrent, currentState);
             }
         }
 

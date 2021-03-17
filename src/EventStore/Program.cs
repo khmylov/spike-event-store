@@ -25,6 +25,12 @@ namespace EventStore
                 .CreateLogger();
 
             Log.Information("Application started at {DateTime}, press Ctrl+C to quit", DateTimeOffset.Now);
+
+            AppDomain.CurrentDomain.UnhandledException += (sender, ex) =>
+            {
+                Log.Error("Unhandled exception: {ex}", ex);
+            };
+
             var cts = new CancellationTokenSource();
             var done = ConfigureCancellation(cts);
             await Run(done, cts.Token);
